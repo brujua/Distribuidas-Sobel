@@ -4,8 +4,16 @@ import java.awt.image.BufferedImage;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
+import common.EstadoNodo;
+import common.RemoteSobel;
+import common.SerializableImage;
+
 public class SobelWorker extends UnicastRemoteObject implements RemoteSobel{
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	/*
 	 * Kernel de convolusión
 	 */	
@@ -13,7 +21,7 @@ public class SobelWorker extends UnicastRemoteObject implements RemoteSobel{
 	public static final int[][] Gy = {{-1, -2, -1},{0,0,0},{1,2,1}};
 	public static final int KERNEL_HEIGHT = 3;
 	public static final int KERNEL_WIDTH = 3;
-	private EstadoNodo estado = EstadoNodo.NO_INICIADO;
+	private EstadoNodo estado = EstadoNodo.DISPONIBLE;
 	
 	
 	protected SobelWorker() throws RemoteException {
@@ -80,6 +88,7 @@ public class SobelWorker extends UnicastRemoteObject implements RemoteSobel{
 			
 		}
 	
+		this.estado=EstadoNodo.FINALIZADO;
 		return new SerializableImage(img);
 	}
 
