@@ -6,6 +6,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -26,9 +27,10 @@ public class SobelCoordinator {
 	
 	public static final String filename = "resources/machine.PNG";
 	public static BufferedImage originalImg;
-	public static  ArrayList<BufferedImage> imgSlices = new ArrayList<BufferedImage>();
+	public static  ArrayList<BufferedImage> imgSlices = new ArrayList<>();
 	public static int sliceNumber;
-	public static Map<Integer,BufferedImage> processedSlices = new HashMap<Integer,BufferedImage>();
+	public static Map<Integer,BufferedImage> processedSlices = new HashMap<>();
+	public static Map<Integer,BufferedImage> slicesToProcess = new HashMap<>();
 	public static ArrayList<SobelNode> nodes = new ArrayList<SobelNode>();
 	
 	public static void main(String[] args) {
@@ -57,15 +59,14 @@ public class SobelCoordinator {
 			//And start the asynchronous process
 			initializeNodes();
 			sliceNumber = nodes.size();
-			for (int i = 0; i < nodes.size(); i++) {
-				SobelNode node = nodes.get(i);
-				BufferedImage imgPiece = getSlice(i, sliceNumber, originalImg,2);
-				node.startSobel(imgPiece);	
+			//slice the image and put the slices in the map waiting to process
+			for (int i = 0; i < sliceNumber; i++) {
+				slicesToProcess.put(i, getSlice(i, sliceNumber, originalImg,2));	
 			}
 			//wait for the results and put them in processedSlices
-			gatherResults();
-			BufferedImage imgFinal = restoreImageFromPieces(mapToList(processedSlices), originalImg.getHeight(), 1);
-			File output = new File("sobelConcatVerdad3.png");
+			processSlices();
+			BufferedImage imgFinal = restoreImageFromPieces(SlicesMapToList(processedSlices), originalImg.getHeight(), 1);
+			File output = new File("sobelConcatVerdad.png");
 			ImageIO.write(imgFinal, "png", output);
 			System.out.println(MSG_SUCCESS);
 		} catch (Exception e) {
@@ -75,7 +76,7 @@ public class SobelCoordinator {
 	
 	
 
-	private static List<BufferedImage> mapToList(Map<Integer, BufferedImage> slices) {
+	private static List<BufferedImage> SlicesMapToList(Map<Integer, BufferedImage> slices) {
 		List<BufferedImage> list = new ArrayList<BufferedImage>();
 		for (int i = 0; i <slices.size() ; i++) {
 			list.add(slices.get(i));
@@ -105,10 +106,26 @@ public class SobelCoordinator {
 		}
 	}
 	
-	private static void gatherResults() {
+	/*
+	 * monitorNodes
+*/
+	private static void processSlices(){
+		//use an iterator to retrieve the slices to process
+		Iterator<Map.Entry<Integer, BufferedImage>> iterator = slicesToProcess.entrySet().iterator();
 		while(true) {
 			for (SobelNode node : nodes) {
 				switch(node.getState()) {
+					case DISPONIBLE:{
+						if(iterator.hasNext()) {
+							//retrieve slice and its number
+							Map.Entry<Integer, BufferedImage> pair = iterator.next();
+							//Set node number to the number of slice
+							node.setNodeNumber(pair.getKey());
+							//start processing
+							node.startSobel(pair.getValue());
+						}
+						break;
+					}
 					case FINALIZADO:{
 						processedSlices.put(node.getNodeNumber(), node.getProcessedImg());
 						node.done();
@@ -116,14 +133,13 @@ public class SobelCoordinator {
 					}
 					case TRABAJANDO:
 						break;
-					case DESCONECTADO:
 					case ERROR: {
-						findNodeToProccesImg(node.getImg());
+						//TODO log the error
+						//the slice will be pending
+						slicesToProcess.put(node.getNodeNumber(), node.getImg());
 						nodes.remove(node);
 						break;
 					}
-					default:
-						break;
 				}
 				//if all slices were processed, return
 				if(processedSlices.size() == sliceNumber) {
@@ -134,23 +150,11 @@ public class SobelCoordinator {
 					Thread.sleep(100);
 				}catch(InterruptedException e) {
 					//log that this thread has been interrupted
-					
 					Thread.currentThread().interrupt();
 				}	
 			}	
 		}
 	}
-	
-	private static void findNodeToProccesImg(BufferedImage img) {
-		while(true) {
-			for(SobelNode node:nodes) {
-				
-			}
-		}
-		
-	}
-
-
 
 	/**
 	 * funcion que devuelve los pedazos de imagenes de a uno, slicenumber va de 0 a sliceCount

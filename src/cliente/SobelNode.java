@@ -30,22 +30,22 @@ public class SobelNode {
 	}
 
 	public void startSobel(BufferedImage img) {
-		if(this.state== EstadoNodo.DISPONIBLE) {			
-			this.state = EstadoNodo.TRABAJANDO;
-			this.thread = new Thread() {
-				@Override
-				public void run() {
-					try {
-						processedImg = rWorker.procesar(new SerializableImage(img)).getImg();
-						state = EstadoNodo.FINALIZADO;
-					} catch (Exception e) {
-						state = EstadoNodo.ERROR;
-						e.printStackTrace();
-					}
+		if(this.state==EstadoNodo.TRABAJANDO)
+			throw new IllegalStateException();
+		this.state = EstadoNodo.TRABAJANDO;
+		this.thread = new Thread() {
+			@Override
+			public void run() {
+				try {
+					processedImg = rWorker.procesar(new SerializableImage(img)).getImg();
+					state = EstadoNodo.FINALIZADO;
+				} catch (Exception e) {
+					state = EstadoNodo.ERROR;
+					e.printStackTrace(); //TODO borrar
 				}
-			};
-			this.thread.start();
-		}		
+			}
+		};
+		this.thread.start();		
 	}
 	
 	public EstadoNodo getState() {
