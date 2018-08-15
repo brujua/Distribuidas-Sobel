@@ -27,12 +27,14 @@ public class SobelCoordinator {
 	
 	//config parameters	
 	public static final String filename = "resources/test.jpg";
+	public static final String resultFilename ="sobel.png";
 	public static final String format = "jpg";
-	public static final String serverIP = "192.168.0.40";
-	public static final int regPort = 5020;
-	public static final int pixelOverlap = 2;
+	public static final String serverIP = "localhost";
+	public static final int regPort = 5001;
 	private static final int NUMBER_OF_WORKERS = 4;
 	
+	//internal config variable
+	private static final int pixelOverlap = 2;
 	//attributes
 	public static BufferedImage originalImg;
 	public static ArrayList<SobelNode> nodes = new ArrayList<SobelNode>();
@@ -58,7 +60,7 @@ public class SobelCoordinator {
 			//wait for the results and put them in processedSlices
 			processSlices();
 			BufferedImage imgFinal = restoreImageFromPieces(SlicesMapToList(processedSlices), originalImg.getHeight(), pixelOverlap);
-			File output = new File("sobel.png");
+			File output = new File(resultFilename);
 			ImageIO.write(imgFinal, "png", output);
 			System.out.println(MSG_SUCCESS);
 		}

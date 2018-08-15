@@ -1,7 +1,7 @@
 package client;
 
 import java.awt.image.BufferedImage;
-import common.EstadoNodo;
+import common.NodeState;
 import common.RemoteSobel;
 import common.SerializableImage;
 /*
@@ -11,7 +11,7 @@ import common.SerializableImage;
  * With the method done() the node goes back to available state
 */
 public class SobelNode {
-	private EstadoNodo state;
+	private NodeState state;
 	private RemoteSobel rWorker;
 	private BufferedImage processedImg;
 	private Thread thread;
@@ -22,7 +22,7 @@ public class SobelNode {
 
 	public SobelNode(RemoteSobel worker, int nodeNumber) {
 		this.rWorker = worker;
-		this.state = EstadoNodo.AVAILABLE;
+		this.state = NodeState.AVAILABLE;
 		this.processedImg = null;
 		this.thread=null;
 		this.img = null;
@@ -31,18 +31,18 @@ public class SobelNode {
 	}
 
 	public void startSobel(BufferedImage img, String format) {
-		if(this.state==EstadoNodo.WORKING)
+		if(this.state==NodeState.WORKING)
 			throw new IllegalStateException();
-		this.state = EstadoNodo.WORKING;
+		this.state = NodeState.WORKING;
 		this.thread = new Thread() {
 			@Override
 			public void run() {
 				try {
 					//blocking rmi call
 					processedImg = rWorker.procesar(new SerializableImage(img, format)).getImg();
-					state = EstadoNodo.FINISHED;
+					state = NodeState.FINISHED;
 				} catch (Exception e) {
-					state = EstadoNodo.ERROR;
+					state = NodeState.ERROR;
 					e.printStackTrace(); //TODO log
 				}
 			}
@@ -50,7 +50,7 @@ public class SobelNode {
 		this.thread.start();		
 	}
 	
-	public EstadoNodo getState() {
+	public NodeState getState() {
 		return this.state;
 	}
 	
@@ -71,8 +71,8 @@ public class SobelNode {
 	}
 
 	public void done() {
-		if(this.state != EstadoNodo.WORKING) {
-			this.state = EstadoNodo.AVAILABLE;
+		if(this.state != NodeState.WORKING) {
+			this.state = NodeState.AVAILABLE;
 		}
 	}
 }

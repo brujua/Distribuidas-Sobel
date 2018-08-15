@@ -1,5 +1,5 @@
 package common;
 
-public enum EstadoNodo {
+public enum NodeState {
 	ERROR, AVAILABLE, WORKING, FINISHED 
 }

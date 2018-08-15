@@ -12,8 +12,8 @@ public class WorkerManager {
 	
 	//config
 	public static final int NUMBER_OF_WORKERS = 4;
-	public static final String ip = "192.168.0.40";
-	public static final int port = 5020;
+	public static final String ip = "localhost";
+	public static final int port = 5001;
 	
 	public static void main(String[] args) {
 		try {
