@@ -17,37 +17,36 @@ import common.RemoteSobel;
 public class SobelCoordinator {
 
 	//msg constants
-	private static final String MSG_SUCCESS = "Todo OK";
-	private static final String MSG_WORKER_CON_SUCC = "Conectado al recurso SobelWorker";
-	private static final String MSG_CONNECTING_WORKERS = "Conectando con los worker";
-	private static final String MSG_ERROR_SLICE = "Error procesando la slice ";
-	private static final String MSG_ERR_NO_NODES = "Error: No hay nodos para trabajar";
-	private static final String MSG_PROCESSED_SLICE = "Procesada exitosamente slice ";
-	private static final String MSG_PROCESSING_SLICE = "Procesando slice ";
+	private static final String MSG_SUCCESS = "Image filtered successfully";
+	private static final String MSG_WORKER_CON_SUCC = "Connected to resource: SobelWorker";
+	private static final String MSG_CONNECTING_WORKERS = "Connecting with workers";
+	private static final String MSG_ERROR_SLICE = "An error occurred while processing slice. ";
+	private static final String MSG_ERR_NO_NODES = "Error: no worker-nodes available";
+	private static final String MSG_PROCESSED_SLICE = "Slice successfully processed ";
+	private static final String MSG_PROCESSING_SLICE = "Processing slice...";
 	
 	//config parameters	
-	public static final String filename = "resources/test.jpg";
-	public static final String resultFilename ="sobel.png";
-	public static final String format = "jpg";
-	public static final String serverIP = "localhost";
-	public static final int regPort = 5001;
+	private static final String filename = "resources/machine.png";
+	private static final String resultFilename ="sobel.png";
+	private static final String format = "png";
+	private static final String serverIP = "localhost";
+	private static final int regPort = 5001;
 	private static final int NUMBER_OF_WORKERS = 4;
 	
 	//internal config variable
 	private static final int pixelOverlap = 2;
-	//attributes
-	public static BufferedImage originalImg;
-	public static ArrayList<SobelNode> nodes = new ArrayList<SobelNode>();
-	public static int sliceNumber;
-	public static Map<Integer,BufferedImage> slicesToProcess = new HashMap<>();
-	public static Map<Integer,BufferedImage> processedSlices = new HashMap<>();
+	private static ArrayList<SobelNode> nodes = new ArrayList<>();
+	private static int sliceNumber;
+	private static Map<Integer,BufferedImage> slicesToProcess = new HashMap<>();
+	private static Map<Integer,BufferedImage> processedSlices = new HashMap<>();
 	
 
 	//methods
 	public static void main(String[] args) {
 		try {
 			File file = new File(filename);
-			originalImg = ImageIO.read(file);
+			//attributes
+			BufferedImage originalImg = ImageIO.read(file);
 			
 			//divide the image in as many slices as nodes are.
 			//And start the asynchronous process
@@ -80,7 +79,7 @@ public class SobelCoordinator {
 			for (int i = 0; i < NUMBER_OF_WORKERS; i++) {
 				RemoteSobel worker = (RemoteSobel) registry.lookup("sobel"+i);
 				if(worker != null) {
-					//the nodeNumber its used to know witch slice its given to it
+					//the nodeNumber is used to know which slice is given
 					//the first time they are given in ascending sequence
 					nodes.add(new SobelNode(worker, i));
 					System.out.println(MSG_WORKER_CON_SUCC+i);
@@ -93,7 +92,7 @@ public class SobelCoordinator {
 	}
 	
 	/*
-	 * Assign the slices to each node and monitors their state
+	 * Assigns the slices to each node and monitors their state
 	 */
 	private static void processSlices(){
 		while(true) {
@@ -130,8 +129,7 @@ public class SobelCoordinator {
 						//TODO log the error
 						//the slice will be pending
 						slicesToProcess.put(node.getNodeNumber(), node.getImg());
-						//the node its removed from the working nodes
-						//TODO depending on the error might be the correct action or not.
+						//Assumes the error is unrecoverable.
 						nodesIt.remove();
 						System.out.println(MSG_ERROR_SLICE + node.getNodeNumber());
 						break;
@@ -147,21 +145,21 @@ public class SobelCoordinator {
 			try {
 				Thread.sleep(250);
 			}catch(InterruptedException e) {
-				//log that this thread has been interrupted
+				//TODO log that this thread has been interrupted
 				Thread.currentThread().interrupt();
 			}					
 		}
 	}
 
 	/**
-	 * funcion que devuelve los pedazos de imagenes de a uno, slicenumber va de 0 a sliceCount
-	 * y permite indicarle que pedazo se quiere recuperar.
-	 * Devuelve las imagenes solapadas opcionalmente
-	 * @param sliceNumber numero de pedazo
-	 * @param sliceCount cantidad de pedazos
-	 * @param image
-	 * @param overlap number of pixel of overlap
-	 * @return pedazo de la imagen, retorna null si la altura de las imagenes va a ser menor a KERNEL_HEIGHT
+	 * This function returns slices of the image one by one, slicenumber goes from 0 to sliceCount,
+	 * must receive which slice has to return.
+	 * Optionally, the slices can overlap
+	 * @param sliceNumber which slice is needed
+	 * @param sliceCount how many slices in total
+	 * @param image image to slice
+	 * @param overlap number of pixel of overlap in the slices
+	 * @return slice of image
 	 *  
 	 */
 	public static BufferedImage getSlice (int sliceNumber, int sliceCount, BufferedImage image,int overlap){
@@ -186,30 +184,29 @@ public class SobelCoordinator {
 	}
 	
 	/**
-	 * @param pieces
-	 * @param originalHeight  :la altura original de la imagen a recuperar
-	 * @param overlap :la cantidad de pixeles de overlap  
-	 * @return
-	 * Función que retorna la union de los pedazo de imagenes, se asume que todos los pedazos
-	 * tienen el mismo widht y tipo. Que corresponden a una imagen
-	 * divida solo de a filas
+     * This function restores an image from slices, assumes that all slices have same width and type,
+     * and that they correspond to a image divided in rows.
+	 * @param pieces the slices
+	 * @param originalHeight height of the image to restore.
+	 * @param overlap number of pixel of overlap between slices.
+	 * @return reconstructed image.
+     *
 	 */
 	public static BufferedImage restoreImageFromPieces(List<BufferedImage> pieces, int originalHeight, int overlap) {
 		int ioverlap = overlap-1;
 		int rows = pieces.size();
-		//asumo que todos tienen igual width,  tipo
+		//all pieces same widht
 		int chunkWidth = pieces.get(0).getWidth();
 		int type = pieces.get(0).getType();
-		//inicializo la imagen resultante
 		BufferedImage imgResult = new BufferedImage(chunkWidth, originalHeight-2, type);
 		
 		for (int i = 0; i < rows; i++) {
 			int chunkHeight = pieces.get(i).getHeight();
-			//si no es la ultima
+			// if it isn´t the last one
 			if(i<rows-1) {
 				BufferedImage imgAux = pieces.get(i).getSubimage(0, ioverlap, chunkWidth, chunkHeight-(ioverlap*2));
 				imgResult.createGraphics().drawImage(imgAux, 0, (chunkHeight -ioverlap*2) * i , null);
-			} else { //si es la ultimo
+			} else { // if is the last one
 				BufferedImage imgAux = pieces.get(i).getSubimage(0, ioverlap, chunkWidth, chunkHeight-(ioverlap*2));
 				imgResult.createGraphics().drawImage(imgAux, 0, (originalHeight - (chunkHeight)), null);
 			}			
@@ -218,7 +215,7 @@ public class SobelCoordinator {
 	}
 	
 	private static List<BufferedImage> SlicesMapToList(Map<Integer, BufferedImage> slices) {
-		List<BufferedImage> list = new ArrayList<BufferedImage>();
+		List<BufferedImage> list = new ArrayList<>();
 		for (int i = 0; i <slices.size() ; i++) {
 			list.add(slices.get(i));
 		}
